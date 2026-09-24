@@ -1,0 +1,23 @@
+# Secretos — nunca al repo (local ni Render)
+.env
+.env.*
+!.env.example
+
+# Entorno virtual
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+
+# Artefactos generados por train_models.py (se regeneran con
+# `python train_models.py`, no hace falta versionarlos)
+models/*.pkl
+models/metrics.json
+data/dataset_enriquecido.csv
+
+# Windows/WSL
+*:Zone.Identifier
+
+# Editor
+.vscode/

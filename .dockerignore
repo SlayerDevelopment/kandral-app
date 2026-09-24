@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+
+# Secretos — nunca a la imagen; en Render van como variable de entorno
+.env
+.env.*
+!.env.example
+
+# Se regeneran en el build con train_models.py
+data/dataset_enriquecido.csv
+models/*.pkl
+models/metrics.json
+
+.git/
+.vscode/
+*:Zone.Identifier

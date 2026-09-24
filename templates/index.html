@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kandral PLN — Prototipo</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --bg-panel: #ffffff;
+    --texto: #1a1f27;
+    --texto-suave: #5c6773;
+    --borde: #d9dee3;
+    --acento: #2f6fed;
+    --acento-suave: #e8f0fe;
+    --rojo: #c0392b; --rojo-bg: #fdecea;
+    --amarillo: #b7791f; --amarillo-bg: #fff6df;
+    --verde: #1e8449; --verde-bg: #e8f8ee;
+    --gris-bg: #eef1f4;
+  }
+  [data-theme="dark"] {
+    --bg: #14181f;
+    --bg-panel: #1c222c;
+    --texto: #e8ecf1;
+    --texto-suave: #9aa5b1;
+    --borde: #303947;
+    --acento: #5b8dff;
+    --acento-suave: #223050;
+    --rojo: #f0776a; --rojo-bg: #3a2224;
+    --amarillo: #e8b04b; --amarillo-bg: #3a3220;
+    --verde: #5cc98a; --verde-bg: #1f3327;
+    --gris-bg: #232a35;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--texto);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    font-size: 15px; line-height: 1.5;
+  }
+  header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 24px; border-bottom: 1px solid var(--borde);
+    background: var(--bg-panel);
+  }
+  header h1 { font-size: 18px; margin: 0; }
+  header p { margin: 2px 0 0; font-size: 13px; color: var(--texto-suave); }
+  #theme-toggle {
+    border: 1px solid var(--borde); background: var(--bg-panel);
+    color: var(--texto); border-radius: 6px; padding: 6px 12px; cursor: pointer;
+  }
+  nav.tabs {
+    display: flex; gap: 4px; padding: 0 24px; background: var(--bg-panel);
+    border-bottom: 1px solid var(--borde); overflow-x: auto;
+  }
+  nav.tabs button {
+    border: none; background: none; color: var(--texto-suave);
+    padding: 12px 16px; cursor: pointer; font-size: 14px; font-weight: 600;
+    border-bottom: 2px solid transparent; white-space: nowrap;
+  }
+  nav.tabs button.activo { color: var(--acento); border-bottom-color: var(--acento); }
+  main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+  .vista { display: none; }
+  .vista.activa { display: block; }
+  .panel {
+    background: var(--bg-panel); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 20px; margin-bottom: 16px;
+  }
+  textarea, select, input[type=text] {
+    width: 100%; padding: 10px; border: 1px solid var(--borde);
+    border-radius: 6px; background: var(--bg); color: var(--texto);
+    font-family: inherit; font-size: 14px;
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  label { font-size: 13px; font-weight: 600; color: var(--texto-suave); display: block; margin-bottom: 6px; }
+  button.primario {
+    background: var(--acento); color: #fff; border: none; border-radius: 6px;
+    padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 12px;
+  }
+  button.primario:disabled { opacity: .6; cursor: default; }
+  .fila-filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 700; background: var(--gris-bg); color: var(--texto);
+  }
+  .badge-p1 { background: var(--rojo-bg); color: var(--rojo); }
+  .badge-p2 { background: var(--amarillo-bg); color: var(--amarillo); }
+  .badge-p3, .badge-p4 { background: var(--verde-bg); color: var(--verde); }
+  .badge-neg { background: var(--rojo-bg); color: var(--rojo); }
+  .badge-pos { background: var(--verde-bg); color: var(--verde); }
+  .badge-neu { background: var(--gris-bg); color: var(--texto-suave); }
+  .grid-resultado { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 16px; }
+  .tarjeta { border: 1px solid var(--borde); border-radius: 8px; padding: 14px; }
+  .tarjeta h4 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-suave); }
+  .chip { display: inline-block; background: var(--acento-suave); color: var(--acento); border-radius: 6px; padding: 3px 8px; font-size: 12px; margin: 2px 4px 2px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  th { color: var(--texto-suave); font-size: 12px; text-transform: uppercase; }
+  td.texto-bitacora { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .paginacion { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 13px; color: var(--texto-suave); }
+  .paginacion button { border: 1px solid var(--borde); background: var(--bg-panel); color: var(--texto); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  .paginacion button:disabled { opacity: .4; cursor: default; }
+  .semaforo { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 16px; }
+  .semaforo.Rojo { background: var(--rojo-bg); color: var(--rojo); }
+  .semaforo.Amarillo { background: var(--amarillo-bg); color: var(--amarillo); }
+  .semaforo.Verde { background: var(--verde-bg); color: var(--verde); }
+  .semaforo .icono { font-size: 22px; }
+  .aviso {
+    background: var(--amarillo-bg); color: var(--amarillo); border: 1px solid var(--amarillo);
+    border-radius: 8px; padding: 12px 14px; font-size: 13px; margin-top: 16px;
+  }
+  .item-lista { border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px; }
+  .item-lista .cabecera { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; flex-wrap: wrap; }
+  .item-lista .activo { color: var(--texto-suave); font-family: monospace; }
+  .metricas-tabla td:first-child { font-weight: 600; }
+  .vacio { color: var(--texto-suave); font-size: 13px; padding: 12px 0; }
+  .nota { font-size: 12px; color: var(--texto-suave); margin-top: 10px; }
+  .chat-mensajes { display: flex; flex-direction: column; gap: 12px; min-height: 240px; max-height: 55vh; overflow-y: auto; padding: 4px; }
+  .burbuja { max-width: 78%; padding: 10px 14px; border-radius: 12px; font-size: 14px; white-space: pre-wrap; line-height: 1.45; }
+  .burbuja.usuario { align-self: flex-end; background: var(--acento); color: #fff; border-bottom-right-radius: 3px; }
+  .burbuja.asistente { align-self: flex-start; background: var(--gris-bg); color: var(--texto); border-bottom-left-radius: 3px; }
+  .burbuja.asistente :first-child { margin-top: 0; }
+  .burbuja.asistente :last-child { margin-bottom: 0; }
+  .burbuja.asistente table { border-collapse: collapse; font-size: 12px; margin: 8px 0; width: 100%; }
+  .burbuja.asistente th, .burbuja.asistente td { border: 1px solid var(--borde); padding: 4px 8px; text-align: left; }
+  .burbuja.asistente code { background: var(--bg); padding: 1px 4px; border-radius: 4px; font-size: 12px; }
+  .burbuja.asistente ul, .burbuja.asistente ol { padding-left: 20px; }
+  .herramientas-usadas { align-self: flex-start; font-size: 11px; color: var(--texto-suave); margin-top: -6px; }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 14px; }
+  .chat-input-row textarea { min-height: 44px; max-height: 120px; }
+  .chat-input-row button { flex-shrink: 0; margin-top: 0; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Kandral PLN — Prototipo</h1>
+    <p>Análisis de bitácora de cambio de turno del datacenter</p>
+  </div>
+  <button id="theme-toggle" aria-label="Cambiar tema claro/oscuro">🌓 Tema</button>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn activo" data-vista="analizar">Analizar bitácora</button>
+  <button class="tab-btn" data-vista="dataset">Explorar dataset</button>
+  <button class="tab-btn" data-vista="resumen">Resumen de turno</button>
+  <button class="tab-btn" data-vista="metricas">Métricas de los modelos</button>
+  <button class="tab-btn" data-vista="chat">Chat</button>
+</nav>
+
+<main>
+
+  <!-- ANALIZAR -->
+  <section id="vista-analizar" class="vista activa">
+    <div class="panel">
+      <label for="texto-analizar">Texto de bitácora</label>
+      <textarea id="texto-analizar" placeholder="Ej: 23:04 caída total del enlace troncal BGP con proveedor Telxius en router SW-TOR-R14..."></textarea>
+      <button class="primario" id="btn-analizar">Analizar</button>
+    </div>
+    <div id="resultado-analizar"></div>
+  </section>
+
+  <!-- DATASET -->
+  <section id="vista-dataset" class="vista">
+    <div class="panel">
+      <div class="fila-filtros">
+        <div>
+          <label for="f-turno">Turno</label>
+          <select id="f-turno"><option value="">Todos</option></select>
+        </div>
+        <div>
+          <label for="f-area">Área técnica</label>
+          <select id="f-area"><option value="">Todas</option></select>
+        </div>
+        <div>
+          <label for="f-severidad">Severidad</label>
+          <select id="f-severidad"><option value="">Todas</option></select>
+        </div>
+        <div>
+          <label for="f-sentimiento">Sentimiento</label>
+          <select id="f-sentimiento"><option value="">Todos</option></select>
+        </div>
+        <div>
+          <label for="f-busqueda">Buscar en texto</label>
+          <input type="text" id="f-busqueda" placeholder="p. ej. mala espina">
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Turno</th><th>Área</th><th>Severidad</th>
+            <th>Activo</th><th>Ticket</th><th>Sentimiento</th><th>Texto</th>
+          </tr></thead>
+          <tbody id="tabla-dataset"></tbody>
+        </table>
+      </div>
+      <div class="paginacion">
+        <span id="dataset-info"></span>
+        <div>
+          <button id="dataset-prev">← Anterior</button>
+          <button id="dataset-next">Siguiente →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESUMEN DE TURNO -->
+  <section id="vista-resumen" class="vista">
+    <div class="panel">
+      <label for="sel-turno-resumen">Turno</label>
+      <select id="sel-turno-resumen">
+        <option value="Mañana">Mañana</option>
+        <option value="Tarde">Tarde</option>
+        <option value="Noche">Noche</option>
+      </select>
+      <button class="primario" id="btn-resumen">Generar resumen</button>
+      <p class="nota">Nota: el dataset no distingue guardias por fecha, así que este resumen agrega todos los registros históricos de ese turno.</p>
+    </div>
+    <div id="resultado-resumen"></div>
+  </section>
+
+  <!-- METRICAS -->
+  <section id="vista-metricas" class="vista">
+    <div id="contenido-metricas" class="panel">Cargando métricas...</div>
+  </section>
+
+  <!-- CHAT -->
+  <section id="vista-chat" class="vista">
+    <div class="panel">
+      <p class="nota" style="margin-top:0">
+        Pegá una bitácora nueva para analizarla, o preguntá sobre el histórico
+        (ej. "¿qué incidentes P1 hubo en Networking?", "resumen del turno noche").
+        Requiere un HF_TOKEN configurado en el servidor.
+      </p>
+      <div class="chat-mensajes" id="chat-mensajes"></div>
+      <div class="chat-input-row">
+        <textarea id="chat-input" placeholder="Escribí tu mensaje..."></textarea>
+        <button class="primario" id="btn-chat-enviar">Enviar</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+const API = "";
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+// --- Tema ---
+const temaGuardado = localStorage.getItem("kandral-tema");
+if (temaGuardado) document.documentElement.setAttribute("data-theme", temaGuardado);
+$("#theme-toggle").addEventListener("click", () => {
+  const actual = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", actual);
+  try { localStorage.setItem("kandral-tema", actual); } catch (e) {}
+});
+
+// --- Tabs ---
+$$(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    $$(".tab-btn").forEach(b => b.classList.remove("activo"));
+    $$(".vista").forEach(v => v.classList.remove("activa"));
+    btn.classList.add("activo");
+    $("#vista-" + btn.dataset.vista).classList.add("activa");
+  });
+});
+
+function badgeSeveridad(sev) {
+  const clase = sev.startsWith("P1") ? "badge-p1" : sev.startsWith("P2") ? "badge-p2" : "badge-p3";
+  return `<span class="badge ${clase}">${sev}</span>`;
+}
+function badgeSentimiento(s) {
+  const clase = s.startsWith("Negativo") ? "badge-neg" : s.startsWith("Positivo") ? "badge-pos" : "badge-neu";
+  return `<span class="badge ${clase}">${s}</span>`;
+}
+
+// --- Analizar ---
+$("#btn-analizar").addEventListener("click", async () => {
+  const texto = $("#texto-analizar").value.trim();
+  const contenedor = $("#resultado-analizar");
+  if (!texto) { contenedor.innerHTML = `<p class="vacio">Pegá un texto de bitácora para analizar.</p>`; return; }
+
+  const boton = $("#btn-analizar");
+  boton.disabled = true; boton.textContent = "Analizando...";
+  try {
+    const resp = await fetch(`${API}/api/analizar`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ texto }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Error al analizar");
+
+    const entidadesHtml = Object.entries(data.entidades_por_tipo).map(([tipo, lista]) =>
+      `<div><strong>${tipo}</strong>: ${lista.map(t => `<span class="chip">${t}</span>`).join("")}</div>`
+    ).join("") || `<p class="vacio">No se detectaron entidades.</p>`;
+
+    const senalesHtml = data.sentimiento.reglas.senales.length
+      ? data.sentimiento.reglas.senales.map(s => `<span class="chip">${s.frase} (${s.peso > 0 ? "+" : ""}${s.peso})</span>`).join("")
+      : `<p class="vacio">Sin señales léxicas detectadas.</p>`;
+
+    contenedor.innerHTML = `
+      <div class="grid-resultado">
+        <div class="tarjeta"><h4>Área técnica</h4><span class="badge">${data.area_tecnica}</span></div>
+        <div class="tarjeta"><h4>Severidad</h4>${badgeSeveridad(data.severidad)}</div>
+        <div class="tarjeta"><h4>Sentimiento (reglas)</h4>${badgeSentimiento(data.sentimiento.reglas.etiqueta)}<div class="nota">score: ${data.sentimiento.reglas.score}</div></div>
+        <div class="tarjeta"><h4>Sentimiento (clasificador)</h4>${badgeSentimiento(data.sentimiento.clasificador)}</div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <h4 style="margin-top:0">Entidades detectadas</h4>
+        ${entidadesHtml}
+      </div>
+      <div class="panel">
+        <h4 style="margin-top:0">Señales léxicas de sentimiento</h4>
+        ${senalesHtml}
+      </div>`;
+  } catch (err) {
+    contenedor.innerHTML = `<p class="vacio">Error: ${err.message}</p>`;
+  } finally {
+    boton.disabled = false; boton.textContent = "Analizar";
+  }
+});
+
+// --- Dataset ---
+let datasetPagina = 1;
+async function cargarOpcionesDataset() {
+  const resp = await fetch(`${API}/api/dataset/opciones`);
+  const data = await resp.json();
+  const llenar = (sel, valores) => {
+    valores.forEach(v => { const op = document.createElement("option"); op.value = v; op.textContent = v; sel.appendChild(op); });
+  };
+  llenar($("#f-turno"), data.turno);
+  llenar($("#f-area"), data.area_tecnica);
+  llenar($("#f-severidad"), data.severidad);
+  llenar($("#f-sentimiento"), data.sentimiento_regla);
+}
+
+async function cargarDataset() {
+  const params = new URLSearchParams({ page: datasetPagina, page_size: 15 });
+  ["turno", "area", "severidad", "sentimiento"].forEach(campo => {
+    const val = $(`#f-${campo}`).value;
+    if (val) params.set(campo === "area" ? "area_tecnica" : campo === "sentimiento" ? "sentimiento_regla" : campo, val);
+  });
+  const busqueda = $("#f-busqueda").value.trim();
+  if (busqueda) params.set("q", busqueda);
+
+  const resp = await fetch(`${API}/api/dataset?${params}`);
+  const data = await resp.json();
+
+  $("#tabla-dataset").innerHTML = data.resultados.map(r => `
+    <tr>
+      <td>${r.id}</td><td>${r.turno}</td><td>${r.area_tecnica}</td>
+      <td>${badgeSeveridad(r.severidad)}</td>
+      <td class="activo">${r.activo_principal ?? "—"}</td>
+      <td>${r.ticket_asociado ?? "—"}</td>
+      <td>${badgeSentimiento(r.sentimiento_regla)}</td>
+      <td class="texto-bitacora" title="${r.texto_bitacora.replace(/"/g, "&quot;")}">${r.texto_bitacora}</td>
+    </tr>`).join("") || `<tr><td colspan="8" class="vacio">Sin resultados.</td></tr>`;
+
+  $("#dataset-info").textContent = `Página ${data.page} de ${data.total_paginas} — ${data.total} registros`;
+  $("#dataset-prev").disabled = data.page <= 1;
+  $("#dataset-next").disabled = data.page >= data.total_paginas;
+}
+
+["f-turno", "f-area", "f-severidad", "f-sentimiento"].forEach(id =>
+  $("#" + id).addEventListener("change", () => { datasetPagina = 1; cargarDataset(); }));
+let debounceBusqueda;
+$("#f-busqueda").addEventListener("input", () => {
+  clearTimeout(debounceBusqueda);
+  debounceBusqueda = setTimeout(() => { datasetPagina = 1; cargarDataset(); }, 350);
+});
+$("#dataset-prev").addEventListener("click", () => { datasetPagina--; cargarDataset(); });
+$("#dataset-next").addEventListener("click", () => { datasetPagina++; cargarDataset(); });
+
+// --- Resumen de turno ---
+$("#btn-resumen").addEventListener("click", async () => {
+  const turno = $("#sel-turno-resumen").value;
+  const contenedor = $("#resultado-resumen");
+  const boton = $("#btn-resumen");
+  boton.disabled = true; boton.textContent = "Generando...";
+  try {
+    const resp = await fetch(`${API}/api/resumen-turno`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ turno }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Error al generar el resumen");
+
+    const iconos = { Rojo: "🔴", Amarillo: "🟡", Verde: "🟢" };
+    const cerradosHtml = data.incidentes_cerrados.length
+      ? data.incidentes_cerrados.map(r => `
+        <div class="item-lista">
+          <div class="cabecera">${badgeSeveridad(r.severidad)}<span class="activo">${r.activo_principal ?? "—"}</span></div>
+          <div>${r.area_tecnica} — Ticket: ${r.ticket_asociado ?? "N/A"}</div>
+        </div>`).join("")
+      : `<p class="vacio">No se detectaron incidentes cerrados en este turno.</p>`;
+
+    const pendientesHtml = data.tareas_pendientes.length
+      ? data.tareas_pendientes.map(r => `
+        <div class="item-lista">
+          <div class="cabecera">${badgeSeveridad(r.severidad)}${badgeSentimiento(r.sentimiento_regla)}<span class="activo">${r.activo_principal ?? "—"}</span></div>
+          <div>${r.area_tecnica} — Ticket: ${r.ticket_asociado ?? "N/A"}</div>
+        </div>`).join("")
+      : `<p class="vacio">Sin tareas pendientes priorizadas.</p>`;
+
+    contenedor.innerHTML = `
+      <div class="panel">
+        <h4 style="margin-top:0">Estado operacional global — Turno ${data.turno}</h4>
+        <div class="semaforo ${data.estado_operacional.semaforo}">
+          <span class="icono">${iconos[data.estado_operacional.semaforo]}</span>
+          ${data.estado_operacional.semaforo.toUpperCase()} —
+          ${data.estado_operacional.total_pendientes} pendientes / ${data.estado_operacional.total_cerrados} cerrados
+          (de ${data.total_registros} registros históricos)
+        </div>
+        <div class="aviso">⚠️ ${data.validacion_humana_obligatoria}</div>
+      </div>
+      <div class="panel">
+        <h4 style="margin-top:0">Incidentes cerrados (${data.incidentes_cerrados.length})</h4>
+        ${cerradosHtml}
+      </div>
+      <div class="panel">
+        <h4 style="margin-top:0">Tareas pendientes priorizadas por severidad (${data.tareas_pendientes.length})</h4>
+        ${pendientesHtml}
+      </div>`;
+  } catch (err) {
+    contenedor.innerHTML = `<p class="vacio">Error: ${err.message}</p>`;
+  } finally {
+    boton.disabled = false; boton.textContent = "Generar resumen";
+  }
+});
+
+// --- Métricas ---
+async function cargarMetricas() {
+  const resp = await fetch(`${API}/api/metrics`);
+  const data = await resp.json();
+  const cont = $("#contenido-metricas");
+
+  const bloques = Object.entries(data.clasificadores).map(([nombre, m]) => {
+    const filasClase = Object.entries(m.reporte_por_clase)
+      .filter(([k]) => !["accuracy", "macro avg", "weighted avg"].includes(k))
+      .map(([clase, vals]) => `<tr><td>${clase}</td><td>${(vals.precision*100).toFixed(1)}%</td><td>${(vals.recall*100).toFixed(1)}%</td><td>${(vals["f1-score"]*100).toFixed(1)}%</td><td>${vals.support}</td></tr>`)
+      .join("");
+    return `
+      <div class="panel">
+        <h4 style="margin-top:0">${nombre}</h4>
+        <p><strong>Accuracy:</strong> ${(m.accuracy*100).toFixed(1)}% — entrenado con ${m.n_train} registros, evaluado con ${m.n_test}.</p>
+        <table class="metricas-tabla">
+          <thead><tr><th>Clase</th><th>Precisión</th><th>Recall</th><th>F1</th><th>Soporte</th></tr></thead>
+          <tbody>${filasClase}</tbody>
+        </table>
+        <p class="nota">Textos duplicados en el dataset: ${m.textos_duplicados_en_dataset}.</p>
+      </div>`;
+  }).join("");
+
+  cont.outerHTML = `
+    <div class="panel">
+      <h4 style="margin-top:0">Dataset: ${data.dataset.archivo}</h4>
+      <p>${data.dataset.n_registros} registros. ${data.dataset.nota_metodologica}</p>
+    </div>
+    ${bloques}`;
+}
+
+// --- Chat ---
+let historialChat = [];
+
+function agregarBurbuja(rol, texto) {
+  const cont = $("#chat-mensajes");
+  const div = document.createElement("div");
+  div.className = `burbuja ${rol === "user" ? "usuario" : "asistente"}`;
+  setTextoBurbuja(div, rol, texto);
+  cont.appendChild(div);
+  cont.scrollTop = cont.scrollHeight;
+  return div;
+}
+
+function setTextoBurbuja(div, rol, texto) {
+  if (rol === "user" || typeof marked === "undefined" || typeof DOMPurify === "undefined") {
+    div.textContent = texto;
+    return;
+  }
+  div.innerHTML = DOMPurify.sanitize(marked.parse(texto));
+}
+
+function agregarNotaHerramientas(nombres) {
+  if (!nombres.length) return;
+  const cont = $("#chat-mensajes");
+  const div = document.createElement("div");
+  div.className = "herramientas-usadas";
+  div.textContent = `🔧 usó: ${nombres.join(", ")}`;
+  cont.appendChild(div);
+  cont.scrollTop = cont.scrollHeight;
+}
+
+async function enviarMensajeChat() {
+  const input = $("#chat-input");
+  const mensaje = input.value.trim();
+  if (!mensaje) return;
+
+  const boton = $("#btn-chat-enviar");
+  agregarBurbuja("user", mensaje);
+  historialChat.push({ role: "user", content: mensaje });
+  input.value = "";
+  boton.disabled = true; input.disabled = true;
+
+  const burbujaEspera = agregarBurbuja("assistant", "Pensando...");
+
+  try {
+    const resp = await fetch(`${API}/api/chat`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mensaje, historial: historialChat.slice(0, -1) }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Error al responder");
+
+    setTextoBurbuja(burbujaEspera, "assistant", data.respuesta);
+    historialChat.push({ role: "assistant", content: data.respuesta });
+    if (data.herramientas_usadas && data.herramientas_usadas.length) {
+      agregarNotaHerramientas(data.herramientas_usadas.map(h => h.nombre));
+    }
+  } catch (err) {
+    burbujaEspera.textContent = `⚠️ ${err.message}`;
+  } finally {
+    boton.disabled = false; input.disabled = false; input.focus();
+  }
+}
+
+$("#btn-chat-enviar").addEventListener("click", enviarMensajeChat);
+$("#chat-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarMensajeChat(); }
+});
+
+// Inicialización
+cargarOpcionesDataset().then(cargarDataset);
+cargarMetricas();
+</script>
+
+</body>
+</html>
